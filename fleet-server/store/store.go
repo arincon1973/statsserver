@@ -15,9 +15,14 @@ type heartbeatSummary struct {
 	total   int64
 }
 
+type uploadSummary struct {
+	totalTime time.Duration
+	count     int64
+}
+
 type deviceData struct {
-	hb          heartbeatSummary
-	uploadTimes []time.Duration
+	hb     heartbeatSummary
+	upload uploadSummary
 }
 
 // Store is a thread-safe in-memory store for device metrics.
@@ -60,7 +65,7 @@ func (s *Store) RecordHeartbeat(deviceID string, sentAt time.Time) error {
 	return nil
 }
 
-// RecordStat stores an upload-time sample for the given device.
+// RecordStat adds an upload-time sample to the running totals for the given device.
 func (s *Store) RecordStat(deviceID string, uploadTime time.Duration) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -68,7 +73,8 @@ func (s *Store) RecordStat(deviceID string, uploadTime time.Duration) error {
 	if !ok {
 		return ErrNotFound
 	}
-	d.uploadTimes = append(d.uploadTimes, uploadTime)
+	d.upload.totalTime += uploadTime
+	d.upload.count++
 	return nil
 }
 
@@ -86,7 +92,7 @@ func (s *Store) HasData(deviceID string) (bool, error) {
 	if !ok {
 		return false, ErrNotFound
 	}
-	return d.hb.total > 0 || len(d.uploadTimes) > 0, nil
+	return d.hb.total > 0 || d.upload.count > 0, nil
 }
 
 // GetStats computes and returns metrics for the given device.
@@ -100,12 +106,8 @@ func (s *Store) GetStats(deviceID string) (DeviceStats, error) {
 
 	stats := DeviceStats{}
 
-	if len(d.uploadTimes) > 0 {
-		var total time.Duration
-		for _, t := range d.uploadTimes {
-			total += t
-		}
-		stats.AvgUploadTime = total / time.Duration(len(d.uploadTimes))
+	if d.upload.count > 0 {
+		stats.AvgUploadTime = d.upload.totalTime / time.Duration(d.upload.count)
 	}
 
 	if d.hb.total > 0 {
