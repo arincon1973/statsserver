@@ -262,6 +262,8 @@ time=... level=INFO msg="server ready" addr=http://127.0.0.1:6733 registered_dev
 - Add request-body size limits to guard against oversized payloads.
 - Add configurable timeouts (read, write, idle) to `http.Server`.
 - Implement graceful shutdown on `SIGTERM`/`SIGINT` so in-flight requests complete cleanly.
+- Guard against malicious requests for non-registered devices and cut the connection immediately
+- Add security so that only authorized reporters can use the APIs
 
 ### Testing
 - Unit tests for the store's aggregate calculations (uptime formula, average upload time).
@@ -270,3 +272,4 @@ time=... level=INFO msg="server ready" addr=http://127.0.0.1:6733 registered_dev
 ### Configuration
 - Move the listen address, log directory, and seeded device list to environment variables or a config file.
 - Support JSON-formatted log output (via `slog.NewJSONHandler`) configurable at startup for log-aggregation pipelines.
+- Use individual heartbeat frequencies per device
